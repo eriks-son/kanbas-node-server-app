@@ -1,5 +1,6 @@
 import * as dao from "./dao.js";
 import * as courseDao from "../Courses/dao.js";
+import * as enrollmentDao from "../Enrollments/dao.js";
 export default function UserRoutes(app) {
   const createUser = (req, res) => { };
   const deleteUser = (req, res) => { };
@@ -19,6 +20,20 @@ export default function UserRoutes(app) {
     res.json(courses);
   };
   app.get("/api/users/:userId/courses", findCoursesForEnrolledUser);
+  const fetchCoursesWithEnrollmentsForUser = (req, res) => {
+    let { userId } = req.params;
+    if (userId === "current") {
+      const currentUser = req.session["currentUser"];
+      if (!currentUser) {
+        res.sendStatus(401);
+        return;
+      }
+      userId = currentUser._id;
+    }
+    const courses = courseDao.findAllCoursesWithEnrollments(userId);
+    res.json(courses);
+  };
+  app.get("/api/users/:userId/coursesWithEnrollments", fetchCoursesWithEnrollmentsForUser);
   const updateUser = (req, res) => {
     const userId = req.params.userId;
     const userUpdates = req.body;
@@ -76,4 +91,30 @@ export default function UserRoutes(app) {
   app.post("/api/users/signin", signin);
   app.post("/api/users/signout", signout);
   app.post("/api/users/profile", profile);
+  app.post("/api/users/:userId/enroll/:courseId", (req, res) => {
+    let { userId, courseId } = req.params;
+    if (userId === "current") {
+      const currentUser = req.session["currentUser"];
+      if (!currentUser) {
+        res.sendStatus(401);
+        return;
+      }
+      userId = currentUser._id;
+    }
+    courseDao.enrollUserInCourse(userId, courseId);
+    return courseDao.findAllCoursesWithEnrollments(userId);
+  });
+  app.delete("/api/users/:userId/enroll/:courseId", (req, res) => {
+    let { userId, courseId } = req.params;
+    if (userId === "current") {
+      const currentUser = req.session["currentUser"];
+      if (!currentUser) {
+        res.sendStatus(401);
+        return;
+      }
+      userId = currentUser._id;
+    }
+    courseDao.unenrollUserInCourse(userId, courseId);
+    return courseDao.findAllCoursesWithEnrollments(userId);
+  });
 }
